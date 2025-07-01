@@ -156,6 +156,7 @@ func checkNodeTypes(ctx context.Context, config *envconf.Config) (context.Contex
 
 	return ctx, nil
 }
+
 // Helper function to deploy DaemonSet + Wait for Ready
 func deployDaemonSet(name, namespace string) env.Func {
 	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {

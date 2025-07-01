@@ -20,6 +20,8 @@ func generateUserData(format string, cluster *Cluster, opts *deployerOptions) (s
 	case "bottlerocket":
 		t = templates.UserDataBottlerocket
 		userDataIsMimePart = false
+	case "soci":
+		t = templates.UserDataSoci
 	default:
 		return "", false, fmt.Errorf("uknown user data format: '%s'", format)
 	}
@@ -31,13 +33,25 @@ func generateUserData(format string, cluster *Cluster, opts *deployerOptions) (s
 	}
 
 	var buf bytes.Buffer
-	if err := t.Execute(&buf, templates.UserDataTemplateData{
+	templateData := templates.UserDataTemplateData{
 		APIServerEndpoint:    cluster.endpoint,
 		CertificateAuthority: cluster.certificateAuthorityData,
 		CIDR:                 cluster.cidr,
 		Name:                 cluster.name,
 		KubeletFeatureGates:  kubeletFeatureGates,
-	}); err != nil {
+		ClusterName:          cluster.name,
+		SociEnabled:          opts.SociEnabled,
+	}
+
+	// Set SOCI-specific default values when the feature is enabled
+	if format == "soci" || opts.SociEnabled {
+		// Default values for SOCI configuration
+		templateData.MaxConcurrentDownloads = "-1"        // default value
+		templateData.MaxConcurrentDownloadsPerImage = "8" // default value
+		templateData.MaxConcurrentUnpacksPerImage = "4"   // default value
+	}
+
+	if err := t.Execute(&buf, templateData); err != nil {
 		return "", false, err
 	}
 	return buf.String(), userDataIsMimePart, nil

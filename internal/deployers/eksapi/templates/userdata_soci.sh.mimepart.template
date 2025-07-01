@@ -8,25 +8,14 @@ Content-Type: application/node.eks.aws
 apiVersion: node.eks.aws/v1alpha1
 kind: NodeConfig
 spec:
-{{- if .SociEnabled}}
   featureGates:
     FastContainerImagePull: true
-{{- end}}
   cluster:
-    name: {{.Name}}
+    name: {{.ClusterName}}
     apiServerEndpoint: {{.APIServerEndpoint}}
-    certificateAuthority: {{.CertificateAuthority}}
-    cidr: {{.CIDR}}
-{{- if .KubeletFeatureGates}}
-  kubelet:
-    config:
-      featureGates:
-        {{- range $gate, $value := .KubeletFeatureGates }}
-        {{$gate}}: {{$value}}
-        {{- end }}
-{{- end }}
+    certificateAuthority: {{.CACert}}
+    cidr: {{.ClusterCIDR}}
 
-{{- if .SociEnabled}}
 --BOUNDARY
 Content-Type: text/x-shellscript; charset="us-ascii"
 
@@ -34,9 +23,9 @@ Content-Type: text/x-shellscript; charset="us-ascii"
 # SOCI snapshotter configuration for fast container image pull
 
 # Image pull settings overrides
-max_concurrent_downloads={{if .MaxConcurrentDownloads}}{{.MaxConcurrentDownloads}}{{else}}-1{{end}}
-max_concurrent_downloads_per_image={{if .MaxConcurrentDownloadsPerImage}}{{.MaxConcurrentDownloadsPerImage}}{{else}}8{{end}}
-max_concurrent_unpacks_per_image={{if .MaxConcurrentUnpacksPerImage}}{{.MaxConcurrentUnpacksPerImage}}{{else}}4{{end}}
+max_concurrent_downloads={{.MaxConcurrentDownloads}}
+max_concurrent_downloads_per_image={{.MaxConcurrentDownloadsPerImage}}
+max_concurrent_unpacks_per_image={{.MaxConcurrentUnpacksPerImage}}
 
 # Apply SOCI configuration updates
 if [ -f /etc/soci-snapshotter-grpc/config.toml ]; then
@@ -56,5 +45,5 @@ fi
 # Log completion and status
 echo "SOCI configuration completed at $(date)"
 systemctl status soci-snapshotter-grpc || true
-{{- end}}
+
 --BOUNDARY--

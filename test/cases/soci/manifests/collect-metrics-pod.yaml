@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: metrics-collector  
+  namespace: default
+spec:
+  restartPolicy: Never
+  nodeName: {{.NodeName}}
+  hostNetwork: true 
+  containers:
+  - name: metrics-collector
+    image: curlimages/curl:latest
+    command: 
+    - sh
+    - -c
+    - |
+      while true; do 
+        curl -s http://localhost:9100/metrics >> /tmp/metrics
+        echo '---' >> /tmp/metrics
+        sleep 5
+      done

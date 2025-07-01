@@ -86,6 +86,7 @@ type deployerOptions struct {
 	UpClusterHeaders    []string      `flag:"up-cluster-header" desc:"Additional header to add to eks:CreateCluster requests. Specified in the same format as curl's -H flag."`
 	UserDataFormat      string        `flag:"user-data-format" desc:"Format of the node instance user data"`
 	ZoneType            string        `flag:"zone-type" desc:"Type of zone to use for infrastructure (availability-zone, local-zone, etc). Defaults to availability-zone"`
+	SociEnabled         bool          `flag:"soci-enabled" desc:"Enable SOCI snapshotter for fast container image pull"`
 }
 
 // NewDeployer implements deployer.New for EKS using the EKS (and other AWS) API(s) directly (no cloudformation)
