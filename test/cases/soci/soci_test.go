@@ -183,14 +183,28 @@ func updateMaxMetrics(max *Metrics, current *Metrics) {
 func parseMetrics(metricFamilies map[string]*dto.MetricFamily) *Metrics {
 	metrics := &Metrics{}
 
-	totalCPU := 0.0
-	userCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "user")
-	systemCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "system")
-	iowaitCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "iowait")
+	var cpuUsed float64
+	var cpuTotal float64
 
-	totalCPU = userCPU + systemCPU + iowaitCPU
-	if totalCPU > 0 {
-		metrics.CPUPercent = (totalCPU) * 100
+	if family, ok := metricFamilies["node_cpu_seconds_total"]; ok {
+		for _, m := range family.GetMetric() {
+			val := m.Counter.GetValue()
+			cpuTotal += val
+
+			// Check if this is a non-idle mode
+			for _, label := range m.GetLabel() {
+				if label.GetName() == "mode" {
+					mode := label.GetValue()
+					if mode != "idle" && mode != "iowait" && mode != "steal" {
+						cpuUsed += val
+					}
+				}
+			}
+		}
+	}
+
+	if cpuTotal > 0 {
+		metrics.CPUPercent = (cpuUsed / cpuTotal) * 100
 	}
 
 	// Extract memory metrics
