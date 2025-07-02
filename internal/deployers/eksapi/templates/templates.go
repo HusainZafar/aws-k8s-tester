@@ -59,6 +59,10 @@ var (
 	//go:embed nvidia_static_cluster_nodepool.yaml.template
 	nvidiaStaticClusterNodepoolTemplate string
 	NvidiaStaticClusterNodepool         = template.Must(template.New("nvidiaStaticClusterNodepool").Parse(nvidiaStaticClusterNodepoolTemplate))
+
+	//go:embed userdata_soci.sh.mimepart.template
+	userDataSociTemplate string
+	UserDataSoci         = template.Must(template.New("userDataSoci").Parse(userDataSociTemplate))
 )
 
 type UserDataTemplateData struct {
@@ -67,6 +71,13 @@ type UserDataTemplateData struct {
 	CIDR                 string
 	APIServerEndpoint    string
 	KubeletFeatureGates  map[string]bool
+
+	// SOCI specific configuration
+	SociEnabled                    bool
+	MaxConcurrentDownloads         string
+	MaxConcurrentDownloadsPerImage string
+	MaxConcurrentUnpacksPerImage   string
+	ClusterName                    string
 }
 
 var (

@@ -21,4 +21,6 @@ var (
 	//go:embed assets/dcgm-exporter.yaml
 	DCGMExporterManifest []byte
 
+	//go:embed assets/node-exporter.yaml
+	NodeExporterManifest []byte
 )

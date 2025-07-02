@@ -1,0 +1,71 @@
+kind: Job
+apiVersion: batch/v1
+metadata:
+  name: {{.JobName}}
+  labels:
+    app: soci-snapshotter-test
+spec:
+  template:
+    metadata:
+      labels:
+        app: soci-snapshotter-test
+    spec:
+      containers:
+      - name: soci-snapshotter-verify-container
+        image: alpine:latest 
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-etc
+          mountPath: /host/etc
+        - name: host-run
+          mountPath: /host/run
+        - name: host-proc
+          mountPath: /host/proc
+        command: 
+        - /bin/sh
+        - -c
+        - |
+          echo -e "\n"
+          echo "===== SOCI Snapshotter Verification ====="
+          echo "Starting test on node type: {{.NodeType}}"
+          
+          # Check SOCI configuration status
+          if [ -f /host/etc/soci-snapshotter-grpc/config.toml ]; then
+            echo "SOCI_CONFIG_STATUS: Found"
+            cat /host/etc/soci-snapshotter-grpc/config.toml | grep -E 'image_pull' > /dev/null || echo "Missing required configuration"
+          else
+            echo "SOCI_CONFIG_STATUS: Not found"
+          fi
+          echo -e "\n"
+          
+          # Check SOCI snapshotter service 
+          if [ -S /host/run/soci-snapshotter-grpc/soci-snapshotter-grpc.sock ]; then
+            echo "Socket found at: /host/run/soci-snapshotter-grpc/soci-snapshotter-grpc.sock"
+            SOCI_PIDS=$(grep -l soci-snapshotter /host/proc/*/cmdline 2>/dev/null | grep -o '[0-9]*')
+            if [ -n "$SOCI_PIDS" ]; then
+              echo "Found SOCI processes with PIDs: $SOCI_PIDS. SOCI_PROCESS_STATUS: Running"
+            fi
+          fi
+          echo -e "\n"
+          
+          # Check Containerd configuration
+          if [ -f /host/etc/containerd/config.toml ]; then
+            cat /host/etc/containerd/config.toml | grep -A 5 "snapshotter = \"soci\"" && echo "CONTAINERD_CONFIG_STATUS: SOCI enabled" || echo "CONTAINERD_CONFIG_STATUS: SOCI not configured"
+          else
+            echo "CONTAINERD_CONFIG_STATUS: No containerd config found"
+          fi
+      volumes:
+      - name: host-etc
+        hostPath:
+          path: /etc
+      - name: host-run
+        hostPath:
+          path: /run
+      - name: host-proc
+        hostPath:
+          path: /proc
+      nodeSelector:
+        node.kubernetes.io/instance-type: {{.NodeType}}
+      restartPolicy: Never
+  backoffLimit: 2
