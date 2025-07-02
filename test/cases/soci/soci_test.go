@@ -58,8 +58,6 @@ type Metrics struct {
 	CPUPercent    float64
 	MemoryPercent float64
 	DiskIO        float64
-	NetworkRx     float64
-	NetworkTx     float64
 }
 
 type ImagePullMetrics struct {
@@ -105,8 +103,6 @@ func TestSOCI(t *testing.T) {
 			t.Logf("  Max CPU: %.2f%%", metrics.CPUPercent)
 			t.Logf("  Max Memory: %.2f%%", metrics.MemoryPercent)
 			t.Logf("  Max Disk I/O: %.2f", metrics.DiskIO)
-			t.Logf("  Max Network: Rx %.2f MB, Tx %.2f MB", metrics.NetworkRx, metrics.NetworkTx)
-
 			return ctx
 		}).
 		Feature()
@@ -182,30 +178,16 @@ func updateMaxMetrics(max *Metrics, current *Metrics) {
 	max.CPUPercent = math.Max(max.CPUPercent, current.CPUPercent)
 	max.MemoryPercent = math.Max(max.MemoryPercent, current.MemoryPercent)
 	max.DiskIO = math.Max(max.DiskIO, current.DiskIO)
-	max.NetworkRx = math.Max(max.NetworkRx, current.NetworkRx)
-	max.NetworkTx = math.Max(max.NetworkTx, current.NetworkTx)
 }
 
 func parseMetrics(metricFamilies map[string]*dto.MetricFamily) *Metrics {
 	metrics := &Metrics{}
 
 	// Extract CPU metrics
-	var idleValue, totalValue float64
-	if family, ok := metricFamilies["node_cpu_seconds_total"]; ok {
-		for _, m := range family.GetMetric() {
-			for _, label := range m.GetLabel() {
-				if label.GetName() == "mode" {
-					val := m.Counter.GetValue()
-					totalValue += val
-					if label.GetValue() == "idle" {
-						idleValue = val
-					}
-				}
-			}
-		}
-		if totalValue > 0 {
-			metrics.CPUPercent = (1 - idleValue/totalValue) * 100
-		}
+	idleValue := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "idle")
+	totalValue := getMetricValue(metricFamilies, "node_cpu_seconds_total")
+	if totalValue > 0 {
+		metrics.CPUPercent = (1 - idleValue/totalValue) * 100
 	}
 
 	// Extract memory metrics
@@ -221,13 +203,9 @@ func parseMetrics(metricFamilies map[string]*dto.MetricFamily) *Metrics {
 	}
 
 	// Extract disk I/O metrics
-	metrics.DiskIO = getMetricValue(metricFamilies, "node_disk_io_now")
-
-	// Extract network metrics
-	netRx := getMetricValue(metricFamilies, "node_network_receive_bytes_total")
-	netTx := getMetricValue(metricFamilies, "node_network_transmit_bytes_total")
-	metrics.NetworkRx = netRx / (1024 * 1024) // Convert to MB
-	metrics.NetworkTx = netTx / (1024 * 1024) // Convert to MB
+	diskRead := getMetricValue(metricFamilies, "node_disk_read_bytes_total")
+	diskWrite := getMetricValue(metricFamilies, "node_disk_written_bytes_total")
+	metrics.DiskIO = (diskRead + diskWrite) / (1024 * 1024)
 
 	return metrics
 }
@@ -356,8 +334,6 @@ func runImagePullTest(ctx context.Context, t *testing.T, testCtx *testContext) (
 			CPUPercent:    maxMetrics.CPUPercent,
 			MemoryPercent: maxMetrics.MemoryPercent,
 			DiskIO:        maxMetrics.DiskIO,
-			NetworkRx:     maxMetrics.NetworkRx,
-			NetworkTx:     maxMetrics.NetworkTx,
 		},
 		ImageName:    imageName,
 		PullDuration: pullDuration,

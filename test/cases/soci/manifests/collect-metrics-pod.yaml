@@ -15,7 +15,7 @@ spec:
     - -c
     - |
       while true; do 
-        curl -s http://localhost:9100/metrics | grep -E "node_(cpu|memory|disk|network).*" > /tmp/metrics
+        curl -s http://localhost:9100/metrics | grep -E "node_(cpu|memory|disk).*" > /tmp/metrics
         cat /tmp/metrics
         echo '---'
         sleep 5
