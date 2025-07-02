@@ -183,11 +183,14 @@ func updateMaxMetrics(max *Metrics, current *Metrics) {
 func parseMetrics(metricFamilies map[string]*dto.MetricFamily) *Metrics {
 	metrics := &Metrics{}
 
-	// Extract CPU metrics
-	idleValue := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "idle")
-	totalValue := getMetricValue(metricFamilies, "node_cpu_seconds_total")
-	if totalValue > 0 {
-		metrics.CPUPercent = (1 - idleValue/totalValue) * 100
+	totalCPU := 0.0
+	userCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "user")
+	systemCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "system")
+	iowaitCPU := getMetricValue(metricFamilies, "node_cpu_seconds_total", "mode", "iowait")
+
+	totalCPU = userCPU + systemCPU + iowaitCPU
+	if totalCPU > 0 {
+		metrics.CPUPercent = (totalCPU) * 100
 	}
 
 	// Extract memory metrics
